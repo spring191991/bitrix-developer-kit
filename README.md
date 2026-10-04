@@ -23,7 +23,7 @@
 
 Перенесите содержимое папки `local/` в корень вашего сайта 1С-Битрикс. Пример вызова компонента:
 ```php
-\$APPLICATION->IncludeComponent(
+$APPLICATION->IncludeComponent(
     "spring:catalog.import",
     "",
     array()
