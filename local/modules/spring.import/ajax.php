@@ -7,6 +7,7 @@ require_once($_SERVER["DOCUMENT_ROOT"]."/bitrix/modules/main/include/prolog_befo
 
 use Bitrix\Main\Loader;
 use Bitrix\Main\Application;
+use Spring\Import\Model\TaskTable; // Подключаем вашу ORM-модель таблицы
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -40,22 +41,37 @@ try {
         throw new \Exception('Недопустимый формат файла. Разрешены только файлы .xlsx или .xls (Excel).');
     }
 
-    // --- НАЧАЛО ЗОНЫ ПАКЕТНОЙ ОБРАБОТКИ ---
-    // В следующих шагах мы передадим этот файл в ваш сервис импорта:
-    // $importService = new \Spring\Import\Services\CatalogImportService();
-    // $importService->execute($uploadedFile['tmp_name'], $categoryId);
-    // --- КОНЕЦ ЗОНЫ ПАКЕТНОЙ ОБРАБОТКИ ---
+    // Собираем дополнительные параметры из полей формы
+    $postParams = [
+        'proizvoditel' => htmlspecialcharsbx($request->getPost('proizvoditel')),
+        'color'        => htmlspecialcharsbx($request->getPost('color')),
+        'material'     => htmlspecialcharsbx($request->getPost('material'))
+    ];
+
+    // Путь, куда виртуально сохраняется файл
+    $uploadedFilePath = '/var/www/html/' . htmlspecialcharsbx($uploadedFile['name']);
+
+    $result = TaskTable::add([
+        'FILE_PATH'   => $uploadedFilePath,
+        'STATUS'      => 'NEW',
+        'CAT_ID'      => $categoryId,
+        'POST_PARAMS' => json_encode($postParams, JSON_UNESCAPED_UNICODE)
+    ]);
+
+    if (!$result->isSuccess()) {
+        throw new \Exception('Ошибка записи в СУБД: ' . implode(', ', $result->getErrorMessages()));
+    }
 
     echo json_encode([
         'status' => 'success',
-        'message' => "Файл «{$uploadedFile['name']}» успешно принят сервером. Задача на асинхронный парсинг зарегистрирована для категории ID: {$categoryId}."
-    ]);
+        'message' => "Успешно: Файл «{$uploadedFile['name']}» успешно принят сервером. Задача на асинхронный парсинг зарегистрирована в базе под ID: " . $result->getId() . " для категории ID: {$categoryId}."
+    ], JSON_UNESCAPED_UNICODE);
 
 } catch (\Throwable $e) {
     echo json_encode([
         'status' => 'error',
         'message' => $e->getMessage()
-    ]);
+    ], JSON_UNESCAPED_UNICODE);
 }
 
 require_once($_SERVER["DOCUMENT_ROOT"]."/bitrix/modules/main/include/epilog_after.php");
