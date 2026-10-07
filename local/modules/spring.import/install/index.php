@@ -1,5 +1,7 @@
 <?php
 use \Bitrix\Main\ModuleManager;
+use Bitrix\Main\Application;
+use Spring\Import\Model\TaskTable;
 
 class spring_import extends CModule {
     public function __construct(){
@@ -15,5 +17,23 @@ class spring_import extends CModule {
 
     public function DoUninstall() {
         ModuleManager::unRegisterModule($this->MODULE_ID);
+    }
+    public function InstallDB() {
+        // Подключаем наш модуль, чтобы Битрикс увидел класс TaskTable
+        if (\Bitrix\Main\Loader::includeModule($this->MODULE_ID)) {
+            $connection = Application::getConnection();
+            if (!$connection->isTableExists(TaskTable::getTableName())) {
+                TaskTable::getEntity()->createDbTable();
+            }
+        }
+    }
+
+    public function UnInstallDB() {
+        if (\Bitrix\Main\Loader::includeModule($this->MODULE_ID)) {
+            $connection = Application::getConnection();
+            if ($connection->isTableExists(TaskTable::getTableName())) {
+                $connection->dropTable(TaskTable::getTableName());
+            }
+        }
     }
 }
