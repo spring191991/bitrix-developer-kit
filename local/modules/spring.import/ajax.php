@@ -7,7 +7,7 @@ require_once($_SERVER["DOCUMENT_ROOT"]."/bitrix/modules/main/include/prolog_befo
 
 use Bitrix\Main\Loader;
 use Bitrix\Main\Application;
-use Spring\Import\Model\TaskTable; // Подключаем вашу ORM-модель таблицы
+use Spring\Import\Model\TaskTable;
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -41,14 +41,12 @@ try {
         throw new \Exception('Недопустимый формат файла. Разрешены только файлы .xlsx или .xls (Excel).');
     }
 
-    // Собираем дополнительные параметры из полей формы
     $postParams = [
         'proizvoditel' => htmlspecialcharsbx($request->getPost('proizvoditel')),
         'color'        => htmlspecialcharsbx($request->getPost('color')),
         'material'     => htmlspecialcharsbx($request->getPost('material'))
     ];
 
-    // Путь, куда виртуально сохраняется файл
     $uploadedFilePath = '/var/www/html/' . htmlspecialcharsbx($uploadedFile['name']);
 
     $result = TaskTable::add([
