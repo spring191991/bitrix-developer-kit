@@ -47,7 +47,16 @@ try {
         'material'     => htmlspecialcharsbx($request->getPost('material'))
     ];
 
-    $uploadedFilePath = '/var/www/html/' . htmlspecialcharsbx($uploadedFile['name']);
+    $uploadDir = $_SERVER["DOCUMENT_ROOT"] . '/bitrix/tmp/spring.import/';
+    
+    if (!file_exists($uploadDir)) {
+        mkdir($uploadDir, 0775, true);
+    }
+
+    $fileName = $_FILES['file']['name'] ?? 'test.xlsx';
+    $uploadedFilePath = $uploadDir . htmlspecialcharsbx($fileName);
+
+    move_uploaded_file($uploadedFile['tmp_name'], $uploadedFilePath);
 
     $result = TaskTable::add([
         'FILE_PATH'   => $uploadedFilePath,
