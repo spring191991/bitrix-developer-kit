@@ -1,4 +1,20 @@
 <?php
+$lockPath = sys_get_temp_dir()
+    . '/spring_import_'
+    . md5(realpath(__DIR__ . '/../../../..') ?: __DIR__)
+    . '.lock';
+
+$lockHandle = fopen($lockPath, 'c');
+
+if ($lockHandle === false) {
+    die("Не удалось открыть файл блокировки импорта.\n");
+}
+
+if (!flock($lockHandle, LOCK_EX | LOCK_NB)) {
+    fclose($lockHandle);
+    die("Импорт уже выполняется другим процессом.\n");
+}
+
 $_SERVER["DOCUMENT_ROOT"] = realpath(__DIR__ . "/../../../..");
 
 // Отключаем сбор статистики Битрикса, чтобы консольный скрипт не тратил лишнюю память
