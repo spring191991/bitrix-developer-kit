@@ -105,7 +105,7 @@ class ExcelParser
                     }
 
                     if ($productId) {
-                        if (\Bitrix\Main\Loader::includeModule('catalog') && $productPrice > 0) {
+                        if ($productPrice > 0) {
                             
                             \CPrice::SetBasePrice($productId, $productPrice, "RUB");
                         }
