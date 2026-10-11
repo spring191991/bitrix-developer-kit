@@ -15,7 +15,8 @@ class TaskTable extends DataManager{
             new StringField('FILE_PATH', ['required' => true]),
             new StringField('STATUS', ['default_value' => 'NEW']),
             new IntegerField('CAT_ID', ['required' => true]),
-            new TextField('POST_PARAMS', ['required' => true])
+            new TextField('POST_PARAMS', ['required' => true]),
+            new IntegerField('CURRENT_ROW', ['default_value' => 0])
         );
         return $map;
     }

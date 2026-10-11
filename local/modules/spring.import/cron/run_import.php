@@ -17,7 +17,9 @@ try {
     }
 
     $task = TaskTable::getList([
-        'filter' => ['=STATUS' => 'NEW'],
+        'filter' => [
+            '@STATUS' => ['NEW', 'PROCESSING']
+        ],
         'order'  => ['ID' => 'ASC'], // Сортируем от старых к новым
         'limit'  => 1
     ])->fetch();
@@ -31,11 +33,43 @@ try {
     $postParams = json_decode($task['POST_PARAMS'], true) ?: [];
 
     $parser = new ExcelParser();
-    $processedCount = $parser->parse($task['FILE_PATH'], (int)$task['CAT_ID'], $postParams);
-
-    TaskTable::update($task['ID'], ['STATUS' => 'SUCCESS']);
     
-    echo "Успех! Задача ID {$task['ID']} выполнена. Импортировано товаров: {$processedCount}\n";
+    $result = $parser->parse($task['FILE_PATH'], (int)$task['CAT_ID'], $postParams, $task['CURRENT_ROW']);
+    $processedCount = $result['importedCount'];
+    $current_row = $result['nextRow'];
+   
+    if($result['isComplete'] == true){
+        $updateResult = TaskTable::update($task['ID'], [
+            'STATUS' => 'SUCCESS',
+            'CURRENT_ROW' => $current_row
+        ]);
+
+        if (!$updateResult->isSuccess()) {
+            throw new \Exception(
+                'Не удалось обновить статус задачи: ' .
+                implode(', ', $updateResult->getErrorMessages())
+            );
+        }
+
+        if (is_file($task['FILE_PATH'])) {
+            unlink($task['FILE_PATH']);
+        }
+
+        echo "Успех! Задача ID {$task['ID']} выполнена.\n";
+    }
+    else{
+        $updateResult = TaskTable::update($task['ID'], [
+            'CURRENT_ROW' => $current_row
+        ]);
+
+        if (!$updateResult->isSuccess()) {
+            throw new \Exception(
+                'Не удалось обновить статус задачи: ' .
+                implode(', ', $updateResult->getErrorMessages())
+            );
+        }
+        echo "Задача ID {$task['ID']} выполняется.\n";
+    }
 
 } catch (\Throwable $e) {
     if (isset($task['ID'])) {
