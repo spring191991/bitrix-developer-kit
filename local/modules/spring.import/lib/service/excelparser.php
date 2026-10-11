@@ -22,11 +22,17 @@ class ExcelParser
                 throw new \Exception('Не удалось подключить системный модуль инфоблоков.');
             }
 
+            if (!\Bitrix\Main\Loader::includeModule('catalog')) {
+                throw new \Exception(
+                    'Не удалось подключить модуль каталога.'
+                );
+            }
+
             $el = new \CIBlockElement;
 
             $rows = $xlsx->rows();
 
-            if (empty($rows)) {
+            if (empty($rows) || count($rows) < 2) {
                 throw new \Exception("Файл Excel не содержит строк с данными.");
             }
 
@@ -42,13 +48,21 @@ class ExcelParser
                 if($stringCount < $chank) {
                     $stringCount++;
 
-                    if (empty($row) || empty(trim($row[0]))) {
+                    if (empty($row)) {
                         continue;
                     }
 
-                    $productName = trim($row[0]);
-                    $productArticle = trim($row[1]);
-                    $productPrice = (float)$row[2];
+                    $externalId = trim($row[0]);
+
+                    if ($externalId === '') {
+                        throw new \Exception(
+                            "Не указан EXTERNAL_ID в строке Excel."
+                        );
+                    }
+
+                    $productName = trim($row[1]);
+                    $productArticle = trim($row[2]);
+                    $productPrice = (float)$row[3];
 
                     $fields = [
                         "IBLOCK_ID" => 2, 
@@ -57,6 +71,7 @@ class ExcelParser
                         "ACTIVE" => "Y", 
                         "CODE" => \CUtil::translit($productName, "ru"), 
                         "PROPERTY_VALUES" => [
+                            "EXTERNAL_ID" => $externalId,
                             "ARTICLE" => $productArticle,
                             "PROIZVODITEL" => $postParams['proizvoditel'] ?? '',
                             "COLOR" => $postParams['color'] ?? '',
@@ -64,8 +79,30 @@ class ExcelParser
                         ]
                     ];
 
-                    // Создаем товар в БД Битрикса
-                    $productId = $el->Add($fields);
+                    // Ищем товар по внешнему ID
+                    $existingProduct = \CIBlockElement::GetList(
+                        [],
+                        [
+                            "IBLOCK_ID" => 2,
+                            "PROPERTY_EXTERNAL_ID" => $externalId,
+                        ],
+                        false,
+                        ["nTopCount" => 1],
+                        ["ID"]
+                    )->Fetch();
+
+                    if ($existingProduct) {
+                        $productId = (int)$existingProduct["ID"];
+
+                        // Обновляем существующий товар
+                        if (!$el->Update($productId, $fields)) {
+                            throw new \Exception(
+                                "Ошибка обновления товара: " . $el->LAST_ERROR
+                            );
+                        }
+                    } else {
+                        $productId = $el->Add($fields);
+                    }
 
                     if ($productId) {
                         if (\Bitrix\Main\Loader::includeModule('catalog') && $productPrice > 0) {
